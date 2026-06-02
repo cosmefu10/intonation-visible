@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Making Intonation Visible</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --border: #1e293b;
+    --model-color: #38bdf8;
+    --learner-color: #f472b6;
+    --accent: #818cf8;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #34d399;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .logo-line {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--model-color);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.2;
+    background: linear-gradient(135deg, var(--model-color), var(--accent), var(--learner-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 300;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  @media (max-width: 600px) {
+    .steps { grid-template-columns: 1fr; }
+  }
+
+  .step-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .step-card:hover { border-color: var(--accent); }
+
+  .step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.75rem;
+  }
+
+  .step-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    color: var(--text);
+  }
+
+  .color-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.6rem 1.1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-model {
+    background: rgba(56,189,248,0.12);
+    color: var(--model-color);
+    border: 1px solid rgba(56,189,248,0.3);
+  }
+  .btn-model:hover { background: rgba(56,189,248,0.22); }
+
+  .btn-record {
+    background: rgba(244,114,182,0.12);
+    color: var(--learner-color);
+    border: 1px solid rgba(244,114,182,0.3);
+  }
+  .btn-record:hover { background: rgba(244,114,182,0.22); }
+  .btn-record.recording {
+    background: rgba(244,114,182,0.3);
+    animation: pulse 1s infinite;
+  }
+
+  .btn-analyze {
+    background: linear-gradient(135deg, var(--model-color), var(--accent));
+    color: #0a0e1a;
+    font-weight: 700;
+    width: 100%;
+    justify-content: center;
+    padding: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .btn-analyze:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-clear {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    padding: 0.4rem 0.8rem;
+  }
+  .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+  /* File input */
+  .file-label {
+    display: block;
+    cursor: pointer;
+  }
+
+  input[type="file"] { display: none; }
+
+  .file-status {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .file-status.ready { color: var(--success); }
+
+  /* Recording indicator */
+  .rec-status {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    font-family: 'Space Mono', monospace;
+    min-height: 1.2em;
+  }
+  .rec-status.active { color: var(--learner-color); }
+  .rec-status.ready { color: var(--success); }
+
+  /* Canvas area */
+  .chart-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .chart-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .legend-line {
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+  }
+
+  canvas {
+    width: 100%;
+    height: 220px;
+    display: block;
+    border-radius: 6px;
+    background: #080c18;
+  }
+
+  /* Info panels */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s 0.5s ease both;
+  }
+
+  @media (max-width: 500px) {
+    .info-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .info-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .info-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Tone units panel */
+  .tone-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s 0.6s ease both;
+  }
+
+  .tone-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .pattern-detected {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: rgba(129,140,248,0.08);
+    border: 1px solid rgba(129,140,248,0.2);
+    margin-bottom: 0.5rem;
+  }
+
+  .pattern-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .pattern-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+
+  .pattern-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .pattern-badge {
+    margin-left: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    background: rgba(129,140,248,0.15);
+    color: var(--accent);
+  }
+
+  .placeholder-msg {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 1rem 0;
+  }
+
+  /* Tip box */
+  .tip-box {
+    background: rgba(52,211,153,0.06);
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 0.82rem;
+    color: var(--success);
+    margin-bottom: 1rem;
+    animation: fadeUp 0.8s 0.7s ease both;
+    display: none;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244,114,182,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(244,114,182,0); }
+  }
+
+  .row-btns {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-line">⬡ Phonetics Lab</div>
+    <h1>Making Intonation Visible</h1>
+    <p class="subtitle">Compare pitch curves · Analyze patterns · Improve your pronunciation</p>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps">
+
+    <!-- Step 1: Model audio -->
+    <div class="step-card">
+      <div class="step-num">STEP 01 —</div>
+      <div class="step-title">
+        <span class="color-dot" style="background:var(--model-color)"></span>
+        Load Model Audio
+      </div>
+      <div class="row-btns">
+        <label class="file-label">
+          <span class="btn btn-model">📂 Choose file</span>
+          <input type="file" id="modelFile" accept="audio/*">
+        </label>
+      </div>
+      <div class="file-status" id="modelStatus">No file selected</div>
+    </div>
+
+    <!-- Step 2: Record -->
+    <div class="step-card">
+      <div class="step-num">STEP 02 —</div>
+      <div class="step-title">
+        <span class="color-dot" style="background:var(--learner-color)"></span>
+        Record Your Voice
+      </div>
+      <div class="row-btns">
+        <button class="btn btn-record" id="recordBtn">🎙 Start recording</button>
+        <button class="btn btn-clear" id="clearRec" style="display:none">✕ Clear</button>
+      </div>
+      <div class="rec-status" id="recStatus">Ready to record</div>
+    </div>
+
+  </div>
+
+  <!-- Analyze button -->
+  <button class="btn btn-analyze" id="analyzeBtn" disabled>⚡ Analyze & Compare Pitch Curves</button>
+
+  <!-- Tip -->
+  <div class="tip-box" id="tipBox"></div>
+
+  <!-- Chart -->
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title">Pitch Contour (F0)</span>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-line" style="background:var(--model-color)"></div>
+          <span>Model</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background:var(--learner-color); border-top: 2px dashed var(--learner-color); height:0"></div>
+          <span>Your voice</span>
+        </div>
+      </div>
+    </div>
+    <canvas id="pitchCanvas"></canvas>
+  </div>
+
+  <!-- Stats -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-label">Model Avg F0</div>
+      <div class="info-value" id="statModelF0" style="color:var(--model-color)">— Hz</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Your Avg F0</div>
+      <div class="info-value" id="statLearnerF0" style="color:var(--learner-color)">— Hz</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Similarity</div>
+      <div class="info-value" id="statSim" style="color:var(--accent)">—</div>
+    </div>
+  </div>
+
+  <!-- Tone patterns -->
+  <div class="tone-panel">
+    <div class="tone-title">🔍 Detected Intonation Patterns</div>
+    <div id="patternContainer">
+      <div class="placeholder-msg">Analyze audio to detect tone patterns</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Audio context ───────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+// ─── State ───────────────────────────────────────────────────────
+let modelBuffer = null;
+let learnerBuffer = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+
+// ─── Elements ────────────────────────────────────────────────────
+const modelFile   = document.getElementById('modelFile');
+const modelStatus = document.getElementById('modelStatus');
+const recordBtn   = document.getElementById('recordBtn');
+const clearRec    = document.getElementById('clearRec');
+const recStatus   = document.getElementById('recStatus');
+const analyzeBtn  = document.getElementById('analyzeBtn');
+const tipBox      = document.getElementById('tipBox');
+const canvas      = document.getElementById('pitchCanvas');
+const ctx2d       = canvas.getContext('2d');
+
+// ─── Load model file ─────────────────────────────────────────────
+modelFile.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  modelStatus.textContent = '⏳ Loading...';
+  modelStatus.className = 'file-status';
+  try {
+    const ab = await file.arrayBuffer();
+    modelBuffer = await getCtx().decodeAudioData(ab);
+    modelStatus.textContent = `✓ ${file.name}`;
+    modelStatus.className = 'file-status ready';
+    checkReady();
+  } catch {
+    modelStatus.textContent = '✗ Error loading file';
+  }
+});
+
+// ─── Recording ───────────────────────────────────────────────────
+recordBtn.addEventListener('click', async () => {
+  if (isRecording) {
+    mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      const ab = await blob.arrayBuffer();
+      learnerBuffer = await getCtx().decodeAudioData(ab);
+      recStatus.textContent = '✓ Recording ready';
+      recStatus.className = 'rec-status ready';
+      recordBtn.textContent = '🎙 Record again';
+      recordBtn.className = 'btn btn-record';
+      clearRec.style.display = 'inline-flex';
+      isRecording = false;
+      checkReady();
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    recordBtn.textContent = '⏹ Stop';
+    recordBtn.className = 'btn btn-record recording';
+    recStatus.textContent = '● Recording...';
+    recStatus.className = 'rec-status active';
+  } catch {
+    recStatus.textContent = '✗ Microphone access denied';
+  }
+});
+
+clearRec.addEventListener('click', () => {
+  learnerBuffer = null;
+  recordedChunks = [];
+  recStatus.textContent = 'Ready to record';
+  recStatus.className = 'rec-status';
+  recordBtn.textContent = '🎙 Start recording';
+  clearRec.style.display = 'none';
+  checkReady();
+  resetUI();
+});
+
+function checkReady() {
+  analyzeBtn.disabled = !(modelBuffer && learnerBuffer);
+}
+
+// ─── Pitch extraction (autocorrelation) ──────────────────────────
+function extractPitch(audioBuffer, numPoints = 200) {
+  const raw = audioBuffer.getChannelData(0);
+  const sr  = audioBuffer.sampleRate;
+  const seg = Math.floor(raw.length / numPoints);
+  const pitches = [];
+
+  for (let i = 0; i < numPoints; i++) {
+    const start = i * seg;
+    const frame = raw.slice(start, start + seg);
+    const f0 = autocorrelate(frame, sr);
+    pitches.push(f0);
+  }
+  return smooth(pitches, 5);
+}
+
+function autocorrelate(buffer, sampleRate) {
+  const SIZE = buffer.length;
+  const MAX_SAMPLES = Math.floor(SIZE / 2);
+  let bestOffset = -1, bestCorr = 0;
+  let lastCorr = 1;
+  let foundGoodCorr = false;
+
+  // RMS check
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.008) return 0;
+
+  for (let offset = 1; offset < MAX_SAMPLES; offset++) {
+    let corr = 0;
+    for (let i = 0; i < MAX_SAMPLES; i++) {
+      corr += buffer[i] * buffer[i + offset];
+    }
+    corr = corr / MAX_SAMPLES;
+    if (corr > 0.9 && corr > lastCorr) {
+      foundGoodCorr = true;
+      if (corr > bestCorr) { bestCorr = corr; bestOffset = offset; }
+    } else if (foundGoodCorr) break;
+    lastCorr = corr;
+  }
+  if (bestOffset === -1) return 0;
+  const f0 = sampleRate / bestOffset;
+  return (f0 > 60 && f0 < 600) ? f0 : 0;
+}
+
+function smooth(arr, w) {
+  return arr.map((_, i) => {
+    const s = Math.max(0, i - w), e = Math.min(arr.length - 1, i + w);
+    const slice = arr.slice(s, e + 1).filter(v => v > 0);
+    return slice.length ? slice.reduce((a, b) => a + b) / slice.length : 0;
+  });
+}
+
+// ─── Pattern detection ───────────────────────────────────────────
+function detectPattern(pitches) {
+  const valid = pitches.filter(p => p > 0);
+  if (valid.length < 5) return null;
+
+  const first = valid.slice(0, Math.floor(valid.length * 0.35));
+  const last  = valid.slice(Math.floor(valid.length * 0.65));
+  const mid   = valid.slice(Math.floor(valid.length * 0.35), Math.floor(valid.length * 0.65));
+
+  const avgF = arr => arr.length ? arr.reduce((a,b)=>a+b)/arr.length : 0;
+
+  const fAvg = avgF(first);
+  const lAvg = avgF(last);
+  const mAvg = avgF(mid);
+
+  const diff = lAvg - fAvg;
+
+  if (Math.abs(diff) < 8) {
+    return { name: 'Level Tone', icon: '➡️', desc: 'Pitch stays relatively stable throughout', tag: 'LEVEL' };
+  }
+  if (diff < -20) {
+    if (lAvg > mAvg + 10) {
+      return { name: 'Fall-Rise', icon: '📉📈', desc: 'Pitch falls then rises — implies contrast or reservation', tag: 'FALL-RISE' };
+    }
+    return { name: 'Fall', icon: '📉', desc: 'Pitch falls — typical of statements and wh-questions', tag: 'FALL' };
+  }
+  if (diff > 20) {
+    if (lAvg < mAvg - 10) {
+      return { name: 'Rise-Fall', icon: '📈📉', desc: 'Pitch rises then falls — implies strong assertion', tag: 'RISE-FALL' };
+    }
+    return { name: 'Rise', icon: '📈', desc: 'Pitch rises — typical of yes/no questions or listing', tag: 'RISE' };
+  }
+  return { name: 'Mixed Contour', icon: '〰️', desc: 'Complex pitch movement detected', tag: 'COMPLEX' };
+}
+
+// ─── Draw canvas ─────────────────────────────────────────────────
+function drawChart(modelPitches, learnerPitches) {
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  ctx2d.scale(devicePixelRatio, devicePixelRatio);
+
+  ctx2d.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx2d.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx2d.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (H / 5) * i;
+    ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+  }
+
+  const allVals = [...modelPitches, ...learnerPitches].filter(v => v > 0);
+  if (!allVals.length) return;
+
+  const minP = Math.max(60, Math.min(...allVals) - 20);
+  const maxP = Math.min(600, Math.max(...allVals) + 20);
+
+  const toY = p => p > 0 ? H - ((p - minP) / (maxP - minP)) * (H * 0.85) - H * 0.05 : null;
+  const toX = (i, len) => (i / (len - 1)) * W;
+
+  const drawLine = (pitches, color, dashed) => {
+    ctx2d.beginPath();
+    ctx2d.strokeStyle = color;
+    ctx2d.lineWidth = 2.5;
+    ctx2d.lineJoin = 'round';
+    ctx2d.lineCap  = 'round';
+    if (dashed) ctx2d.setLineDash([6, 4]);
+    else ctx2d.setLineDash([]);
+
+    let started = false;
+    pitches.forEach((p, i) => {
+      const x = toX(i, pitches.length);
+      const y = toY(p);
+      if (y === null) { started = false; return; }
+      if (!started) { ctx2d.moveTo(x, y); started = true; }
+      else ctx2d.lineTo(x, y);
+    });
+    ctx2d.stroke();
+    ctx2d.setLineDash([]);
+
+    // Glow
+    ctx2d.shadowBlur = 12;
+    ctx2d.shadowColor = color;
+    ctx2d.stroke();
+    ctx2d.shadowBlur = 0;
+  };
+
+  drawLine(modelPitches, '#38bdf8', false);
+  drawLine(learnerPitches, '#f472b6', true);
+
+  // Hz labels
+  ctx2d.fillStyle = 'rgba(100,116,139,0.8)';
+  ctx2d.font = `${11 * devicePixelRatio / devicePixelRatio}px Space Mono`;
+  ctx2d.textAlign = 'left';
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const hz = Math.round(minP + (maxP - minP) * (i / steps));
+    const y  = H - ((hz - minP) / (maxP - minP)) * (H * 0.85) - H * 0.05;
+    ctx2d.fillText(`${hz}Hz`, 4, y - 3);
+  }
+}
+
+// ─── Similarity score ─────────────────────────────────────────────
+function similarity(a, b) {
+  const va = a.filter(v=>v>0), vb = b.filter(v=>v>0);
+  if (!va.length || !vb.length) return 0;
+  const avgA = va.reduce((x,y)=>x+y)/va.length;
+  const avgB = vb.reduce((x,y)=>x+y)/vb.length;
+  const diff = Math.abs(avgA - avgB);
+  const score = Math.max(0, 100 - diff * 1.2);
+  return Math.round(score);
+}
+
+// ─── Analyze ─────────────────────────────────────────────────────
+analyzeBtn.addEventListener('click', () => {
+  const modelPitch   = extractPitch(modelBuffer);
+  const learnerPitch = extractPitch(learnerBuffer);
+
+  drawChart(modelPitch, learnerPitch);
+
+  // Stats
+  const avgValid = arr => {
+    const v = arr.filter(x=>x>0);
+    return v.length ? Math.round(v.reduce((a,b)=>a+b)/v.length) : 0;
+  };
+  document.getElementById('statModelF0').textContent  = `${avgValid(modelPitch)} Hz`;
+  document.getElementById('statLearnerF0').textContent = `${avgValid(learnerPitch)} Hz`;
+  const sim = similarity(modelPitch, learnerPitch);
+  document.getElementById('statSim').textContent = `${sim}%`;
+
+  // Patterns
+  const mPat = detectPattern(modelPitch);
+  const lPat = detectPattern(learnerPitch);
+
+  const cont = document.getElementById('patternContainer');
+  cont.innerHTML = '';
+
+  const render = (pat, label, color) => {
+    if (!pat) return;
+    const d = document.createElement('div');
+    d.className = 'pattern-detected';
+    d.innerHTML = `
+      <span class="pattern-icon">${pat.icon}</span>
+      <div>
+        <div class="pattern-name" style="color:${color}">${label}: ${pat.name}</div>
+        <div class="pattern-desc">${pat.desc}</div>
+      </div>
+      <span class="pattern-badge">${pat.tag}</span>
+    `;
+    cont.appendChild(d);
+  };
+
+  render(mPat, 'Model', '#38bdf8');
+  render(lPat, 'Your voice', '#f472b6');
+
+  // Tip
+  tipBox.style.display = 'block';
+  if (sim >= 75) {
+    tipBox.textContent = `✓ Great match! Your intonation pattern closely follows the model (${sim}% similarity). Keep practicing!`;
+  } else if (sim >= 45) {
+    tipBox.textContent = `↗ Getting there! Your curve shows a similar direction but differs in pitch range. Try to match the rises and falls more closely.`;
+  } else {
+    tipBox.textContent = `↻ Keep practicing! Your pitch curve differs from the model. Focus on the shape of the contour — where it rises and where it falls.`;
+  }
+});
+
+function resetUI() {
+  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('statModelF0').textContent  = '— Hz';
+  document.getElementById('statLearnerF0').textContent = '— Hz';
+  document.getElementById('statSim').textContent = '—';
+  document.getElementById('patternContainer').innerHTML = '<div class="placeholder-msg">Analyze audio to detect tone patterns</div>';
+  tipBox.style.display = 'none';
+}
+</script>
+</body>
+</html>
